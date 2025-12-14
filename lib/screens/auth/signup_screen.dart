@@ -40,14 +40,24 @@ class _SignupScreenState extends State<SignupScreen> {
       name: _nameController.text.trim(),
     );
 
-    if (mounted) {
-      setState(() => _isLoading = false);
+    // Check if widget is still mounted before using context or setState
+    if (!mounted) return;
 
-      if (error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error), backgroundColor: Colors.red),
-        );
-      }
+    setState(() => _isLoading = false);
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
+      );
+    } else {
+      // Success - show message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account created successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      // AuthWrapper will automatically navigate to HomeScreen since user is now logged in
     }
   }
 

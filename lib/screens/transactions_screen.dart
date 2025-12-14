@@ -1,5 +1,3 @@
-// ignore_for_file: unused_import
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,10 +7,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'add_transaction_screen.dart';
 
 class TransactionsScreen extends StatefulWidget {
-  final List<TransactionModel> transactions;
-
-  const TransactionsScreen({Key? key, required this.transactions})
-    : super(key: key);
+  const TransactionsScreen({Key? key}) : super(key: key);
 
   @override
   State<TransactionsScreen> createState() => _TransactionsScreenState();
@@ -22,8 +17,31 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   String _filterType = 'all';
   String _filterCategory = 'all';
 
-  List<TransactionModel> get filteredTransactions {
-    return widget.transactions.where((t) {
+  // Get transactions stream from Firestore
+  Stream<List<TransactionModel>> get transactionsStream {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return Stream.value([]);
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('transactions')
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          print(
+            'TransactionsScreen - Received ${snapshot.docs.length} transactions',
+          );
+          return snapshot.docs
+              .map((doc) => TransactionModel.fromDoc(doc))
+              .toList();
+        });
+  }
+
+  List<TransactionModel> filterTransactions(
+    List<TransactionModel> transactions,
+  ) {
+    return transactions.where((t) {
       if (_filterType != 'all' && t.type != _filterType) return false;
       if (_filterCategory != 'all' && t.category != _filterCategory)
         return false;
@@ -39,11 +57,45 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         backgroundColor: const Color(0xFF5E60CE),
         foregroundColor: Colors.white,
       ),
-      body: Column(
-        children: [
-          _buildFilters(),
-          Expanded(child: _buildTransactionsList()),
-        ],
+      body: StreamBuilder<List<TransactionModel>>(
+        stream: transactionsStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Error: ${snapshot.error}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => setState(() {}),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final allTransactions = snapshot.data ?? [];
+          final filteredTransactions = filterTransactions(allTransactions);
+
+          print(
+            'TransactionsScreen - Total: ${allTransactions.length}, Filtered: ${filteredTransactions.length}',
+          );
+
+          return Column(
+            children: [
+              _buildFilters(),
+              Expanded(child: _buildTransactionsList(filteredTransactions)),
+            ],
+          );
+        },
       ),
     );
   }
@@ -119,9 +171,26 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
-  Widget _buildTransactionsList() {
+  Widget _buildTransactionsList(List<TransactionModel> filteredTransactions) {
     if (filteredTransactions.isEmpty) {
-      return const Center(child: Text('No transactions found'));
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'No transactions found',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Add a transaction to get started',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
     }
 
     return ListView.builder(
@@ -280,15 +349,22 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             .collection('transactions')
             .doc(transaction.id)
             .delete();
+
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Transaction deleted')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Transaction deleted'),
+            backgroundColor: Colors.green,
+          ),
+        );
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Delete failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }

@@ -20,6 +20,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   late TextEditingController _amountController;
   late TextEditingController _descriptionController;
   late DateTime _selectedDate;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -197,11 +198,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              _selectedDate.day.toString() +
-                  '/' +
-                  _selectedDate.month.toString() +
-                  '/' +
-                  _selectedDate.year.toString(),
+              '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
               style: const TextStyle(fontSize: 16),
             ),
             const Icon(Icons.calendar_today),
@@ -225,21 +222,34 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   Widget _buildSaveButton() {
     return ElevatedButton(
-      onPressed: _saveTransaction,
+      onPressed: _isLoading ? null : _saveTransaction,
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF5E60CE),
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      child: Text(
-        widget.transaction == null ? 'Add Transaction' : 'Update Transaction',
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      ),
+      child: _isLoading
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+          : Text(
+              widget.transaction == null
+                  ? 'Add Transaction'
+                  : 'Update Transaction',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
     );
   }
 
   Future<void> _saveTransaction() async {
+    if (!_formKey.currentState!.validate()) return;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -250,30 +260,54 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       return;
     }
 
-    final amount = double.tryParse(_amountController.text.trim());
-    if (amount == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Invalid amount')));
-      return;
+    setState(() => _isLoading = true);
+
+    try {
+      final amount = double.parse(_amountController.text.trim());
+
+      final transactionData = {
+        'amount': amount,
+        'type': _type,
+        'category': _category,
+        'description': _descriptionController.text.trim(),
+        'date': _selectedDate.toUtc().toIso8601String(),
+      };
+
+      final col = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('transactions');
+
+      if (widget.transaction == null) {
+        // Add new transaction
+        await col.add(transactionData);
+      } else {
+        // Update existing transaction
+        await col.doc(widget.transaction!.id).update(transactionData);
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.transaction == null
+                ? 'Transaction added successfully'
+                : 'Transaction updated successfully',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-
-    final tx = TransactionModel(
-      id: '', // Firestore will assign the id
-      amount: amount,
-      type: _type, // 'income' or 'expense' from your form
-      category: _category,
-      description: _descriptionController.text.trim(),
-      date: DateTime.now(),
-    );
-
-    final col = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('transactions');
-    await col.add(tx.toMap());
-
-    if (!mounted) return;
-    Navigator.pop(context); // return to previous screen
   }
 }

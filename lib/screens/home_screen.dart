@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../screens/transaction_model.dart';
 import '../screens/categories.dart';
 import '../services/auth_service.dart';
@@ -19,48 +19,62 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  Box<TransactionModel> get transactionBox {
-    final userId = FirebaseAuth.instance.currentUser!.uid;
-    return Hive.box<TransactionModel>('transactions_' + userId);
+  // Get transactions stream from Firestore
+  Stream<List<TransactionModel>> get transactionsStream {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return Stream.value([]);
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('transactions')
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => TransactionModel.fromDoc(doc))
+              .toList();
+        });
   }
 
-  List<TransactionModel> get allTransactions {
-    return transactionBox.values.toList().reversed.toList();
-  }
-
-  double get totalIncome {
-    return allTransactions
+  double getTotalIncome(List<TransactionModel> transactions) {
+    return transactions
         .where((t) => t.type == 'income')
         .fold(0.0, (sum, t) => sum + t.amount);
   }
 
-  double get totalExpense {
-    return allTransactions
+  double getTotalExpense(List<TransactionModel> transactions) {
+    return transactions
         .where((t) => t.type == 'expense')
         .fold(0.0, (sum, t) => sum + t.amount);
   }
 
-  double get balance => totalIncome - totalExpense;
-
-  @override
-  void initState() {
-    super.initState();
-    // ignore: avoid_print
-    print('HomeScreen.initState');
+  double getBalance(List<TransactionModel> transactions) {
+    return getTotalIncome(transactions) - getTotalExpense(transactions);
   }
 
   @override
   Widget build(BuildContext context) {
-    // ignore: avoid_print
-    print('HomeScreen.build');
-    return ValueListenableBuilder(
-      valueListenable: transactionBox.listenable(),
-      builder: (context, Box<TransactionModel> box, _) {
-        final transactions = box.values.toList().reversed.toList();
+    return StreamBuilder<List<TransactionModel>>(
+      stream: transactionsStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(child: Text('Error: ${snapshot.error}')),
+          );
+        }
+
+        final transactions = snapshot.data ?? [];
 
         final List<Widget> screens = [
           _buildDashboard(transactions),
-          TransactionsScreen(transactions: transactions),
+          const TransactionsScreen(),
           AnalyticsScreen(transactions: transactions),
           const ProfileScreen(),
         ];
@@ -112,6 +126,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDashboard(List<TransactionModel> transactions) {
+    final totalIncome = getTotalIncome(transactions);
+    final totalExpense = getTotalExpense(transactions);
+    final balance = getBalance(transactions);
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -123,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            _buildHeader(),
+            _buildHeader(balance, totalIncome, totalExpense),
             Expanded(
               child: Container(
                 decoration: const BoxDecoration(
@@ -139,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(double balance, double totalIncome, double totalExpense) {
     final user = FirebaseAuth.instance.currentUser;
 
     return Padding(
@@ -163,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Welcome, ' + (user?.displayName ?? 'User'),
+                    'Welcome, ${user?.displayName ?? 'User'}',
                     style: const TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                 ],
@@ -355,11 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       subtitle: Text(
-                        transaction.date.day.toString() +
-                            '/' +
-                            transaction.date.month.toString() +
-                            '/' +
-                            transaction.date.year.toString(),
+                        '${transaction.date.day}/${transaction.date.month}/${transaction.date.year}',
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 14,

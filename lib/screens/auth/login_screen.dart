@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/auth_service.dart';
 import 'signup_screen.dart';
 import 'forgot_password_screen.dart';
@@ -15,6 +14,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _authService = AuthService();
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -25,22 +25,28 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _submit() async {
-    try {
-      await AuthService().signIn(
-        _emailController.text.trim(),
-        _passwordController.text,
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    final error = await _authService.signIn(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
+
+    // Check if widget is still mounted before using context or setState
+    if (!mounted) return;
+
+    // Now safe to use setState and context
+    setState(() => _isLoading = false);
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
       );
-      Navigator.pop(context);
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? e.code)));
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
     }
+    // If error is null, AuthWrapper will automatically navigate to HomeScreen
   }
 
   @override

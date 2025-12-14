@@ -24,11 +24,9 @@ class AuthService {
 
       // Update display name
       await result.user?.updateDisplayName(name);
+      await result.user?.reload();
 
-      // Create / update user doc in Firestore
-      await _createOrUpdateUserDoc(result.user!, name: name);
-
-      // Ensure user document exists
+      // Create user document in Firestore
       await FirebaseFirestore.instance
           .collection('users')
           .doc(result.user!.uid)
@@ -42,46 +40,28 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       return _handleAuthException(e);
     } catch (e) {
-      return 'An error occurred. Please try again.';
+      return 'An error occurred: ${e.toString()}';
     }
   }
 
-  // Sign in with email and password
-  Future<UserCredential> signIn(String email, String password) async {
+  // Sign in with email and password - SIMPLIFIED
+  Future<String?> signIn({
+    required String email,
+    required String password,
+  }) async {
     try {
-      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      // Ensure user doc exists/updated after sign in
-      await _createOrUpdateUserDoc(cred.user!);
-      return cred;
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      return null; // Success
     } on FirebaseAuthException catch (e) {
-      // rethrow with message so caller can show it
-      throw FirebaseAuthException(code: e.code, message: e.message);
+      return _handleAuthException(e);
+    } catch (e) {
+      return 'Login failed: ${e.toString()}';
     }
   }
 
   // Sign out
   Future<void> signOut() async {
-    try {
-      await _auth.signOut();
-    } catch (e) {
-      // ignore leftover Hive-related errors (some old code may still run)
-      final msg = e.toString();
-      if (msg.contains('HiveError') ||
-          msg.contains('already open') ||
-          msg.contains('box')) {
-        // attempt a direct firebase signOut as fallback
-        try {
-          await FirebaseAuth.instance.signOut();
-        } catch (_) {
-          // swallow secondary errors to avoid blocking logout flow
-        }
-        return;
-      }
-      rethrow;
-    }
+    await _auth.signOut();
   }
 
   // Reset password
@@ -93,22 +73,6 @@ class AuthService {
       return _handleAuthException(e);
     } catch (e) {
       return 'An error occurred. Please try again.';
-    }
-  }
-
-  // Ensure Firestore user doc exists
-  Future<void> _createOrUpdateUserDoc(User user, {String? name}) async {
-    final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-    final snapshot = await docRef.get();
-    final data = {
-      'email': user.email,
-      'displayName': name ?? user.displayName,
-      'lastSeen': FieldValue.serverTimestamp(),
-    };
-    if (snapshot.exists) {
-      await docRef.update(data);
-    } else {
-      await docRef.set({...data, 'createdAt': FieldValue.serverTimestamp()});
     }
   }
 
@@ -129,8 +93,10 @@ class AuthService {
         return 'This account has been disabled.';
       case 'too-many-requests':
         return 'Too many attempts. Please try again later.';
+      case 'invalid-credential':
+        return 'Invalid email or password.';
       default:
-        return 'Authentication failed. Please try again.';
+        return e.message ?? 'Authentication failed. Please try again.';
     }
   }
 }
