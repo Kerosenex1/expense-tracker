@@ -22,7 +22,7 @@ class TransactionModel {
     'type': type,
     'category': category,
     'description': description,
-    'date': Timestamp.fromDate(date),
+    'date': date.toUtc().toIso8601String(), // ✅ Save as ISO String
   };
 
   factory TransactionModel.fromMap(String id, Map<String, dynamic> m) {
@@ -32,7 +32,7 @@ class TransactionModel {
       type: m['type'] as String,
       category: m['category'] as String? ?? '',
       description: m['description'] as String? ?? '',
-      date: (m['date'] as Timestamp).toDate(),
+      date: DateTime.parse(m['date'] as String).toLocal(), // ✅ Parse ISO String
     );
   }
 

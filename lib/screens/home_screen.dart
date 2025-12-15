@@ -75,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final List<Widget> screens = [
           _buildDashboard(transactions),
           const TransactionsScreen(),
-          AnalyticsScreen(transactions: transactions),
+          const AnalyticsScreen(),
           const ProfileScreen(),
         ];
 
