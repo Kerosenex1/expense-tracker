@@ -265,12 +265,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     try {
       final amount = double.parse(_amountController.text.trim());
 
+      // Use Timestamp instead of ISO string for better Firestore compatibility
       final transactionData = {
         'amount': amount,
         'type': _type,
         'category': _category,
         'description': _descriptionController.text.trim(),
-        'date': _selectedDate.toUtc().toIso8601String(),
+        'date': Timestamp.fromDate(_selectedDate), // Changed to Timestamp
       };
 
       final col = FirebaseFirestore.instance
@@ -281,9 +282,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       if (widget.transaction == null) {
         // Add new transaction
         await col.add(transactionData);
+        print('✅ Transaction added successfully');
       } else {
         // Update existing transaction
         await col.doc(widget.transaction!.id).update(transactionData);
+        print('✅ Transaction updated successfully');
       }
 
       if (!mounted) return;
@@ -300,6 +303,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         ),
       );
     } catch (e) {
+      print('❌ Error saving transaction: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),

@@ -22,20 +22,39 @@ class TransactionModel {
     'type': type,
     'category': category,
     'description': description,
-    'date': date.toUtc().toIso8601String(), // ✅ Save as ISO String
+    'date': date.toUtc().toIso8601String(),
   };
 
   factory TransactionModel.fromMap(String id, Map<String, dynamic> m) {
+    // Handle both Timestamp and String date formats
+    DateTime parsedDate;
+
+    if (m['date'] is Timestamp) {
+      // If it's a Firestore Timestamp
+      parsedDate = (m['date'] as Timestamp).toDate();
+    } else if (m['date'] is String) {
+      // If it's an ISO string
+      parsedDate = DateTime.parse(m['date'] as String);
+    } else {
+      // Fallback to current date if format is unexpected
+      parsedDate = DateTime.now();
+    }
+
     return TransactionModel(
       id: id,
       amount: (m['amount'] as num).toDouble(),
       type: m['type'] as String,
       category: m['category'] as String? ?? '',
       description: m['description'] as String? ?? '',
-      date: DateTime.parse(m['date'] as String).toLocal(), // ✅ Parse ISO String
+      date: parsedDate.toLocal(),
     );
   }
 
-  factory TransactionModel.fromDoc(DocumentSnapshot doc) =>
-      TransactionModel.fromMap(doc.id, doc.data() as Map<String, dynamic>);
+  factory TransactionModel.fromDoc(DocumentSnapshot doc) {
+    final data = doc.data();
+    if (data == null) {
+      throw Exception('Document data is null');
+    }
+    return TransactionModel.fromMap(doc.id, data as Map<String, dynamic>);
+  }
 }

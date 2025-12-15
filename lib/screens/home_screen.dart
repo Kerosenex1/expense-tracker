@@ -186,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              IconButton(
+              IconButton( //logout button
                 onPressed: () async {
                   final confirm = await showDialog<bool>(
                     context: context,

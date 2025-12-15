@@ -47,20 +47,20 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAC1Jd9owL1oQhPBWLio98jH8DhL0TXNEs',
-    appId: '1:545466731341:android:ab1b882c580f3160670504',
-    messagingSenderId: '545466731341',
-    projectId: 'playclone-28e26',
-    storageBucket: 'playclone-28e26.firebasestorage.app',
+    apiKey: 'AIzaSyA4YiUZbOXzfqUTCFxp-TON8XOYPhODStQ',
+    appId: '1:586976580448:android:fe4b3c5c2ee58c25da4405',
+    messagingSenderId: '586976580448',
+    projectId: 'expense-83512',
+    storageBucket: 'expense-83512.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAmdiNGjFCymWgaMpaNRfwIY9vm3ba_o2M',
-    appId: '1:545466731341:ios:a31ff968ec72117f670504',
-    messagingSenderId: '545466731341',
-    projectId: 'playclone-28e26',
-    storageBucket: 'playclone-28e26.firebasestorage.app',
-    iosBundleId: 'com.example.googleplay',
+    apiKey: 'AIzaSyBRR7qOY0ifBh0HCovEzu2IG72lNpdx0C0',
+    appId: '1:586976580448:ios:6c1f2888a7e93a40da4405',
+    messagingSenderId: '586976580448',
+    projectId: 'expense-83512',
+    storageBucket: 'expense-83512.firebasestorage.app',
+    iosBundleId: 'com.example.expense',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
