@@ -1,32 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../services/auth_service.dart';
 import '../home_screen.dart';
 import 'login_screen.dart';
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({Key? key}) : super(key: key);
 
   @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    print('🔷 AuthWrapper initialized');
+  }
+
+  @override
   Widget build(BuildContext context) {
+    print('🔷 AuthWrapper building...');
+
     return StreamBuilder<User?>(
-      stream: AuthService().authStateChanges,
+      stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Debug: Print connection state
-        print('AuthWrapper - ConnectionState: ${snapshot.connectionState}');
-        print('AuthWrapper - HasData: ${snapshot.hasData}');
-        print('AuthWrapper - Data: ${snapshot.data}');
-        print('AuthWrapper - Error: ${snapshot.error}');
+        print('═══════════════════════════════════════');
+        print('🔷 AuthWrapper StreamBuilder Update');
+        print('🔷 ConnectionState: ${snapshot.connectionState}');
+        print('🔷 HasData: ${snapshot.hasData}');
+        print('🔷 HasError: ${snapshot.hasError}');
+        if (snapshot.hasData) {
+          print('🔷 User ID: ${snapshot.data?.uid}');
+          print('🔷 User Email: ${snapshot.data?.email}');
+          print('🔷 User Name: ${snapshot.data?.displayName}');
+        }
+        print('═══════════════════════════════════════');
 
         // Show loading indicator while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
+          print('⏳ Showing loading screen');
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFF5E60CE),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Text('Loading...'),
+                ],
+              ),
+            ),
           );
         }
 
         // Show error if something went wrong
         if (snapshot.hasError) {
+          print('❌ Auth error: ${snapshot.error}');
           return Scaffold(
             body: Center(
               child: Column(
@@ -42,13 +75,7 @@ class AuthWrapper extends StatelessWidget {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
-                      // Try to reload
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AuthWrapper(),
-                        ),
-                      );
+                      setState(() {}); // Force rebuild
                     },
                     child: const Text('Retry'),
                   ),
@@ -60,12 +87,12 @@ class AuthWrapper extends StatelessWidget {
 
         // If user is logged in, show home screen
         if (snapshot.hasData && snapshot.data != null) {
-          print('AuthWrapper - User logged in: ${snapshot.data!.email}');
+          print('✅ User is logged in, navigating to HomeScreen');
           return const HomeScreen();
         }
 
         // If user is not logged in, show login screen
-        print('AuthWrapper - No user, showing login');
+        print('🔓 No user logged in, showing LoginScreen');
         return const LoginScreen();
       },
     );

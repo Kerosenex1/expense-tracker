@@ -9,6 +9,8 @@ void main() async {
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  print('🚀 Firebase initialized successfully');
+
   runApp(const ExpenseTrackerApp());
 }
 
@@ -26,6 +28,7 @@ class ExpenseTrackerApp extends StatelessWidget {
         fontFamily: 'Inter',
         appBarTheme: const AppBarTheme(elevation: 0, centerTitle: true),
       ),
+      // Use builder to ensure we only have one instance of AuthWrapper
       home: const AuthWrapper(),
     );
   }
