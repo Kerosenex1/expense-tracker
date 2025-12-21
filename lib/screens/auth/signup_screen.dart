@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/auth_service.dart';
 import '../home_screen.dart';
 import 'login_screen.dart';
 
@@ -30,112 +29,86 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  Future<void> _signup() async {
-    // Validate form
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  final AuthService _authService = AuthService();
 
-    // Show loading
+  Future<void> _signup() async {
+    if (!_formKey.currentState!.validate()) return;
+
     setState(() => _isLoading = true);
 
     try {
-      // Create user in Firebase
-      final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-          );
+      final String? error = await _authService.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+        name: _nameController.text.trim(),
+      );
 
-      // Update display name
-      if (credential.user != null) {
-        await credential.user!.updateDisplayName(_nameController.text.trim());
-
-        // Create Firestore document
-        try {
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(credential.user!.uid)
-              .set({
-                'email': _emailController.text.trim(),
-                'displayName': _nameController.text.trim(),
-                'createdAt': FieldValue.serverTimestamp(),
-              });
-        } catch (firestoreError) {
-          debugPrint('Firestore error (non-critical): $firestoreError');
-        }
-      }
-
-      // Stop loading
       if (!mounted) return;
       setState(() => _isLoading = false);
+      
+      if (error == null) {
+        // Ensure the newly created account does not leave the user signed-in,
+        // and wait briefly for the auth state to reflect the sign-out.
+        try {
+          await _authService.signOut();
 
-      // SHOW DIALOG TO CONFIRM CODE RUNS
-      if (!mounted) return;
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext dialogContext) {
-          return AlertDialog(
-            title: const Text('Success!'),
-            content: Text(
-              'Account created for ${credential.user?.email}!\n\nPress OK to go to HomeScreen',
-            ),
+          try {
+            await _authService.authStateChanges
+                .firstWhere((u) => u == null)
+                .timeout(const Duration(seconds: 5));
+          } catch (waitError) {
+            debugPrint(
+              'Auth state did not change to null within timeout: $waitError',
+            );
+          }
+        } catch (signOutError) {
+          debugPrint('Sign out after signup failed: $signOutError');
+        }
+
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              title: const Text('Success!'),
+              content: Text(
+                'Account created for ${_emailController.text.trim()}!\n\nPress OK to go to Login',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Error'),
+            content: Text(error),
             actions: [
               TextButton(
-                onPressed: () {
-                  // Close dialog first
-                  Navigator.of(dialogContext).pop();
-
-                  // Then navigate to HomeScreen
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (context) => const HomeScreen()),
-                  );
-                },
+                onPressed: () => Navigator.pop(context),
                 child: const Text('OK'),
               ),
             ],
-          );
-        },
-      );
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-
-      setState(() => _isLoading = false);
-
-      String errorMessage;
-      switch (e.code) {
-        case 'weak-password':
-          errorMessage = 'The password is too weak.';
-          break;
-        case 'email-already-in-use':
-          errorMessage = 'An account already exists with this email.';
-          break;
-        case 'invalid-email':
-          errorMessage = 'Invalid email address.';
-          break;
-        default:
-          errorMessage = e.message ?? 'Signup failed. Please try again.';
+          ),
+        );
       }
-
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Error'),
-          content: Text(errorMessage),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
     } catch (e) {
       if (!mounted) return;
-
       setState(() => _isLoading = false);
-
       showDialog(
         context: context,
         builder: (context) => AlertDialog(

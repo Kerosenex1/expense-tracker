@@ -118,7 +118,9 @@ class AuthService {
   // Sign out
   Future<void> signOut() async {
     try {
+      print('🔵 AuthService.signOut() called');
       await _auth.signOut();
+      print('✅ AuthService.signOut() completed');
     } catch (e) {
       print('Sign out error: $e');
     }
