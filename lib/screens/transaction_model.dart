@@ -29,17 +29,7 @@ class TransactionModel {
     // Handle both Timestamp and String date formats
     DateTime parsedDate;
 
-    if (m['date'] is Timestamp) {
-      // If it's a Firestore Timestamp
-      parsedDate = (m['date'] as Timestamp).toDate();
-    } else if (m['date'] is String) {
-      // If it's an ISO string
-      parsedDate = DateTime.parse(m['date'] as String);
-    } else {
-      // Fallback to current date if format is unexpected
-      parsedDate = DateTime.now();
-    }
-
+    parsedDate = (m['date'] as Timestamp).toDate();
     return TransactionModel(
       id: id,
       amount: (m['amount'] as num).toDouble(),

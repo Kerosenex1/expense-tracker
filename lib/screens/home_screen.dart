@@ -81,10 +81,10 @@ class _HomeScreenState extends State<HomeScreen> {
         final transactions = snapshot.data ?? [];
 
         final List<Widget> screens = [
-          _buildDashboard(transactions),
-          const TransactionsScreen(),
-          const AnalyticsScreen(),
-          const ProfileScreen(),
+          _buildDashboard(transactions),//0
+          const TransactionsScreen(),   //1
+          const AnalyticsScreen(),      //2 
+          const ProfileScreen(),        //3 
         ];
 
         return Scaffold(
