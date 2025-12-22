@@ -28,10 +28,7 @@ class AuthService {
       print('✅ User created: ${result.user?.uid}');
       print('✅ User email: ${result.user?.email}');
 
-      // Add delay to ensure user is fully created
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      // Get fresh user reference
+      // Get user reference
       User? user = result.user;
 
       if (user != null) {
@@ -42,20 +39,16 @@ class AuthService {
 
           // Reload user to get updated info
           await user.reload();
-
-          // Get refreshed user
-          user = _auth.currentUser;
-          print('✅ User reloaded, current user: ${user?.displayName}');
+          print('✅ User reloaded');
         } catch (profileError) {
           print('⚠️ Profile update error (non-critical): $profileError');
-          // Continue even if profile update fails
         }
 
         // Create user document in Firestore
         try {
           await FirebaseFirestore.instance
               .collection('users')
-              .doc(user?.uid ?? result.user!.uid)
+              .doc(user.uid)
               .set({
                 'email': email,
                 'displayName': name,
@@ -64,22 +57,16 @@ class AuthService {
           print('✅ Firestore document created');
         } catch (firestoreError) {
           print('⚠️ Firestore error (non-critical): $firestoreError');
-          // Continue even if Firestore fails
         }
       }
 
-      print('✅ Signup complete, user should be logged in');
+      print('✅ Signup complete');
       return null; // Success
     } on FirebaseAuthException catch (e) {
       print('❌ Firebase Auth error: ${e.code} - ${e.message}');
       return _handleAuthException(e);
     } catch (e) {
       print('❌ Signup error: $e');
-      // Check if user was actually created despite the error
-      if (_auth.currentUser != null) {
-        print('✅ User was created despite error');
-        return null; // User was created successfully
-      }
       return 'An error occurred: ${e.toString()}';
     }
   }
@@ -121,8 +108,12 @@ class AuthService {
       print('🔵 AuthService.signOut() called');
       await _auth.signOut();
       print('✅ AuthService.signOut() completed');
+
+      // Add a small delay to ensure auth state propagates
+      await Future.delayed(const Duration(milliseconds: 100));
     } catch (e) {
-      print('Sign out error: $e');
+      print('❌ Sign out error: $e');
+      rethrow; // Re-throw so caller knows there was an error
     }
   }
 
