@@ -9,7 +9,6 @@ void main() async {
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  print('🚀 Firebase initialized successfully');
 
   runApp(const ExpenseTrackerApp());
 }

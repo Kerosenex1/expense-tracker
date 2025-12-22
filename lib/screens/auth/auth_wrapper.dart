@@ -60,6 +60,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
         // Show error if something went wrong
         if (snapshot.hasError) {
           print('❌ Auth error: ${snapshot.error}');
+          if (snapshot.error.toString().contains('permission-denied')) {
+            print(
+              '🔓 Permission denied during transition, redirecting to Login',
+            );
+            return const LoginScreen();
+          }
           return Scaffold(
             body: Center(
               child: Column(

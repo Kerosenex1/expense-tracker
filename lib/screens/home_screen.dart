@@ -22,6 +22,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // Get transactions stream from Firestore
   Stream<List<TransactionModel>> get transactionsStream {
     final userId = FirebaseAuth.instance.currentUser?.uid;
+
+    // If no user, return empty stream immediately
     if (userId == null) return Stream.value([]);
 
     return FirebaseFirestore.instance
@@ -34,6 +36,12 @@ class _HomeScreenState extends State<HomeScreen> {
           return snapshot.docs
               .map((doc) => TransactionModel.fromDoc(doc))
               .toList();
+        })
+        .handleError((error) {
+          // This catches the PERMISSION_DENIED error during logout
+          // and prevents it from reaching the StreamBuilder.
+          debugPrint('Caught expected logout error: $error');
+          return <TransactionModel>[];
         });
   }
 
@@ -91,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     );
                   },
-                  backgroundColor: const Color(0xFF5E60CE),
+                  backgroundColor: const Color.fromARGB(255, 255, 255, 255),
                   child: const Icon(Icons.add),
                 )
               : null,
@@ -186,7 +194,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              IconButton( //logout button
+              IconButton(
+                //logout button
                 onPressed: () async {
                   final confirm = await showDialog<bool>(
                     context: context,
@@ -275,7 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '\$${amount.toStringAsFixed(2)}',
+            '${amount.toStringAsFixed(2)} EGP',
             style: TextStyle(
               color: color == Colors.white
                   ? Colors.white
@@ -380,7 +389,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       trailing: Text(
-                        "${transaction.type == 'income' ? '+' : '-'}\$${transaction.amount.toStringAsFixed(2)}",
+                        "${transaction.type == 'income' ? '+' : '-'}${transaction.amount.toStringAsFixed(2)} EGP",
                         style: TextStyle(
                           color: transaction.type == 'income'
                               ? Colors.green

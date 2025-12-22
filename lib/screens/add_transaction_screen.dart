@@ -123,7 +123,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
         labelText: 'Amount',
-        prefixText: '\$ ',
+        prefixText: 'EGP ', //appears after pressing
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Colors.grey.shade50,
@@ -303,7 +303,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         ),
       );
     } catch (e) {
-      print('❌ Error saving transaction: $e');
+      print(' Error saving transaction: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),

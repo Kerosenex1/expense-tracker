@@ -116,7 +116,7 @@ class AnalyticsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '\$${totalExpenses.toStringAsFixed(2)}',
+                      '${totalExpenses.toStringAsFixed(2)} EGP',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 36,
@@ -194,7 +194,7 @@ class AnalyticsScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '\$${entry.value.toStringAsFixed(2)}',
+                            '${entry.value.toStringAsFixed(2)} EGP',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,

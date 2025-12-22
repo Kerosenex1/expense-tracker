@@ -276,7 +276,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 ],
               ),
               trailing: Text(
-                '${transaction.type == 'income' ? '+' : '-'}\$${transaction.amount.toStringAsFixed(2)}',
+                '${transaction.type == 'income' ? '+' : '-'}${transaction.amount.toStringAsFixed(2)} EGP',
                 style: TextStyle(
                   color: transaction.type == 'income'
                       ? Colors.green
